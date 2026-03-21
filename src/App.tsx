@@ -70,14 +70,11 @@ export default function App() {
   };
 
   return (
-    <div
-      className="app-shell"
-      style={{ background: "var(--background)" }}
-    >
+    <div className="app-shell" style={{ background: "var(--background)" }}>
       <aside className={`app-sidebar ${menuOpen ? "open" : ""}`}>
         <div className="app-brand">
           <div className="app-brand-badge">T</div>
-          <div>
+          <div className="app-brand-texts">
             <div className="app-brand-title">TUADERM</div>
             <div className="app-brand-subtitle">Sistema Clínico</div>
           </div>
@@ -106,12 +103,7 @@ export default function App() {
         </nav>
       </aside>
 
-      {menuOpen && (
-        <div
-          className="app-overlay"
-          onClick={() => setMenuOpen(false)}
-        />
-      )}
+      {menuOpen && <div className="app-overlay" onClick={() => setMenuOpen(false)} />}
 
       <div className="app-main">
         <header className="app-topbar">
@@ -120,17 +112,16 @@ export default function App() {
               type="button"
               className="app-menu-btn"
               onClick={() => setMenuOpen((prev) => !prev)}
+              aria-label="Abrir menú"
             >
               {menuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
 
-            <div>
+            <div className="app-topbar-texts">
               <div className="app-page-title">
                 {navItems.find((item) => item.key === vista)?.label}
               </div>
-              <div className="app-page-subtitle">
-                Centro estético · gestión diaria
-              </div>
+              <div className="app-page-subtitle">Centro estético · gestión diaria</div>
             </div>
           </div>
         </header>
