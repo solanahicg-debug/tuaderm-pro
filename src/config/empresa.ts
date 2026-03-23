@@ -1,9 +1,13 @@
-let empresaIdActual = '2edf9e2b-2226-43d6-9f87-0ebb4cdba9a4';
+let empresaIdActual: string | null = null;
 
-export const setEmpresaId = (empresaId: string) => {
+export const setEmpresaId = (empresaId: string | null) => {
   empresaIdActual = empresaId;
 };
 
 export const getEmpresaId = () => {
   return empresaIdActual;
+};
+
+export const clearEmpresaId = () => {
+  empresaIdActual = null;
 };

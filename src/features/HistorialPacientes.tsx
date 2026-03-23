@@ -129,7 +129,11 @@ const splitCsv = (value: string | null): string[] =>
 
 const joinCsv = (values: string[]): string => values.join(', ');
 
-const HistorialPacientes: React.FC = () => {
+type Props = {
+  esAdmin: boolean;
+};
+
+const HistorialPacientes: React.FC<Props> = ({ esAdmin }) => {
   const empresaId = getEmpresaId();
 
   const [busqueda, setBusqueda] = useState('');

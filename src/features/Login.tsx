@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../api/supabase';
 
 type Props = {
-  onLoginSuccess: () => void;
+  onLoginSuccess?: () => void;
 };
 
 const Login: React.FC<Props> = ({ onLoginSuccess }) => {
@@ -32,7 +32,7 @@ const Login: React.FC<Props> = ({ onLoginSuccess }) => {
       return;
     }
 
-    onLoginSuccess();
+    onLoginSuccess?.();
   };
 
   return (
