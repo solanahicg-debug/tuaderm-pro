@@ -5,6 +5,7 @@ import {
   type PerfilUsuario,
   type RolApp,
 } from '../utils/perfil';
+import { crearUsuarioConPerfil } from '../utils/usuarios';
 
 type Props = {
   empresaId: string;
@@ -19,11 +20,20 @@ const rolesDisponibles: RolApp[] = [
   'usuario',
 ];
 
+const formularioInicial = {
+  email: '',
+  password: '',
+  nombre: '',
+  rol: 'usuario' as RolApp,
+};
+
 export default function UsuariosAdmin({ empresaId, esAdmin }: Props) {
   const [usuarios, setUsuarios] = useState<PerfilUsuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
+  const [creando, setCreando] = useState(false);
   const [mensaje, setMensaje] = useState('');
+  const [nuevoUsuario, setNuevoUsuario] = useState(formularioInicial);
 
   const cargarUsuarios = async () => {
     if (!empresaId) return;
@@ -76,6 +86,35 @@ export default function UsuariosAdmin({ empresaId, esAdmin }: Props) {
     }
   };
 
+  const crearUsuario = async () => {
+    try {
+      if (!nuevoUsuario.email || !nuevoUsuario.password || !nuevoUsuario.nombre) {
+        setMensaje('Completa email, contraseña y nombre.');
+        return;
+      }
+
+      setCreando(true);
+      setMensaje('');
+
+      await crearUsuarioConPerfil({
+        email: nuevoUsuario.email,
+        password: nuevoUsuario.password,
+        nombre: nuevoUsuario.nombre,
+        rol: nuevoUsuario.rol,
+        empresa_id: empresaId,
+      });
+
+      setMensaje('Usuario creado correctamente.');
+      setNuevoUsuario(formularioInicial);
+      await cargarUsuarios();
+    } catch (error) {
+      console.error('Error creando usuario:', error);
+      setMensaje(error instanceof Error ? error.message : 'No se pudo crear el usuario.');
+    } finally {
+      setCreando(false);
+    }
+  };
+
   if (!esAdmin) {
     return (
       <div className="ficha-container" style={{ maxWidth: 900 }}>
@@ -114,6 +153,76 @@ export default function UsuariosAdmin({ empresaId, esAdmin }: Props) {
           {mensaje}
         </div>
       )}
+
+      <div className="form-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 16 }}>
+        <div className="form-row">
+          <label>Email</label>
+          <input
+            className="excel-input"
+            value={nuevoUsuario.email}
+            onChange={(e) =>
+              setNuevoUsuario((prev) => ({ ...prev, email: e.target.value }))
+            }
+            placeholder="correo@empresa.com"
+          />
+        </div>
+
+        <div className="form-row">
+          <label>Contraseña</label>
+          <input
+            type="password"
+            className="excel-input"
+            value={nuevoUsuario.password}
+            onChange={(e) =>
+              setNuevoUsuario((prev) => ({ ...prev, password: e.target.value }))
+            }
+            placeholder="********"
+          />
+        </div>
+
+        <div className="form-row">
+          <label>Nombre</label>
+          <input
+            className="excel-input"
+            value={nuevoUsuario.nombre}
+            onChange={(e) =>
+              setNuevoUsuario((prev) => ({ ...prev, nombre: e.target.value }))
+            }
+            placeholder="Nombre del usuario"
+          />
+        </div>
+
+        <div className="form-row">
+          <label>Rol</label>
+          <select
+            className="excel-input"
+            value={nuevoUsuario.rol}
+            onChange={(e) =>
+              setNuevoUsuario((prev) => ({
+                ...prev,
+                rol: e.target.value as RolApp,
+              }))
+            }
+          >
+            {rolesDisponibles.map((rol) => (
+              <option key={rol} value={rol}>
+                {rol}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="btn-group" style={{ marginBottom: 16 }}>
+        <button
+          type="button"
+          className="btn btn-save"
+          onClick={crearUsuario}
+          disabled={creando}
+        >
+          {creando ? 'Creando...' : 'Crear usuario'}
+        </button>
+      </div>
 
       <div style={{ overflowX: 'auto' }}>
         <table className="excel-table" style={{ width: '100%' }}>

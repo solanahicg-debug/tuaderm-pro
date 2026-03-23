@@ -21,7 +21,6 @@ import Egresos from "./features/Egresos";
 import FlujoNeto from "./features/FlujoNeto";
 import Dashboard from "./features/Dashboard";
 import Login from "./features/Login";
-import BloqueoDemo from "./features/BloqueoDemo";
 import UsuariosAdmin from "./features/UsuariosAdmin";
 
 import { obtenerUsuarioActual, cerrarSesionAuth } from "./utils/auth";
@@ -30,15 +29,6 @@ import {
   type PerfilUsuario,
   type RolApp,
 } from "./utils/perfil";
-import {
-  obtenerEmpresaPorId,
-  empresaEstaVencida,
-  empresaEsDemo,
-  empresaEsPremium,
-  empresaEsBasica,
-  obtenerNombrePlan,
-  type Empresa,
-} from "./utils/empresa";
 import { setEmpresaId } from "./config/empresa";
 import { supabase } from "./api/supabase";
 
@@ -57,7 +47,6 @@ type NavItem = {
   label: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   rolesPermitidos: RolApp[];
-  requierePremium?: boolean;
 };
 
 const navItems: NavItem[] = [
@@ -90,21 +79,18 @@ const navItems: NavItem[] = [
     label: "Ingresos",
     icon: Wallet,
     rolesPermitidos: ["admin"],
-    requierePremium: true,
   },
   {
     key: "egresos",
     label: "Egresos",
     icon: ReceiptText,
     rolesPermitidos: ["admin"],
-    requierePremium: true,
   },
   {
     key: "flujo",
     label: "Flujo Neto",
     icon: ChartNoAxesCombined,
     rolesPermitidos: ["admin"],
-    requierePremium: true,
   },
   {
     key: "usuarios",
@@ -121,34 +107,21 @@ export default function App() {
   const [cargandoSesion, setCargandoSesion] = useState(true);
   const [logueado, setLogueado] = useState(false);
   const [perfil, setPerfil] = useState<PerfilUsuario | null>(null);
-  const [empresa, setEmpresa] = useState<Empresa | null>(null);
-  const [empresaVencida, setEmpresaVencida] = useState(false);
+
+  const empresaNombre = "TUADERM";
+  const empresaSubtitulo = "Sistema Clínico";
 
   const rolActual: RolApp = (perfil?.rol as RolApp) || "usuario";
-  const planActual = obtenerNombrePlan(empresa?.plan);
-
-  const esDemoEmpresa = empresaEsDemo(empresa);
-  const esPremiumEmpresa = empresaEsPremium(empresa);
-  const esBasicaEmpresa = empresaEsBasica(empresa);
-
-  const empresaNombre = empresa?.nombre || "TUADERM";
-  const empresaSubtitulo = `Plan: ${planActual}`;
 
   const navPermitido = useMemo(() => {
-    return navItems.filter((item) => {
-      const rolOk = item.rolesPermitidos.includes(rolActual);
-      const planOk = item.requierePremium ? esPremiumEmpresa : true;
-      return rolOk && planOk;
-    });
-  }, [rolActual, esPremiumEmpresa]);
+    return navItems.filter((item) => item.rolesPermitidos.includes(rolActual));
+  }, [rolActual]);
 
   const vistaPermitida = useMemo(() => {
-    return navItems.some((item) => {
-      const rolOk = item.rolesPermitidos.includes(rolActual);
-      const planOk = item.requierePremium ? esPremiumEmpresa : true;
-      return item.key === vista && rolOk && planOk;
-    });
-  }, [vista, rolActual, esPremiumEmpresa]);
+    return navItems.some(
+      (item) => item.key === vista && item.rolesPermitidos.includes(rolActual)
+    );
+  }, [vista, rolActual]);
 
   const tituloVista = useMemo(() => {
     return navItems.find((item) => item.key === vista)?.label || "Dashboard";
@@ -158,8 +131,6 @@ export default function App() {
     setEmpresaId(null);
     setLogueado(false);
     setPerfil(null);
-    setEmpresa(null);
-    setEmpresaVencida(false);
   };
 
   const cargarSesion = async () => {
@@ -180,12 +151,7 @@ export default function App() {
       }
 
       setEmpresaId(perfilUsuario.empresa_id);
-
-      const empresaUsuario = await obtenerEmpresaPorId(perfilUsuario.empresa_id);
-
       setPerfil(perfilUsuario);
-      setEmpresa(empresaUsuario);
-      setEmpresaVencida(empresaEstaVencida(empresaUsuario));
       setLogueado(true);
     } catch (error) {
       console.error("Error cargando sesión:", error);
@@ -229,8 +195,6 @@ export default function App() {
       setEmpresaId(null);
       setLogueado(false);
       setPerfil(null);
-      setEmpresa(null);
-      setEmpresaVencida(false);
       setMenuOpen(false);
       setVista("dashboard");
     }
@@ -240,19 +204,13 @@ export default function App() {
     const esAdmin = perfil?.rol === "admin";
 
     if (!vistaPermitida) {
-      const itemActual = navItems.find((item) => item.key === vista);
-      const moduloPremium = itemActual?.requierePremium === true;
-
       return (
         <div className="ficha-container" style={{ maxWidth: 700 }}>
           <div className="ficha-header">
             <div className="ficha-title">Acceso restringido</div>
           </div>
-
           <div style={{ padding: "12px 0" }}>
-            {moduloPremium
-              ? "Este módulo está disponible solo para empresas con plan Premium o Pro."
-              : "No tienes permisos para acceder a este módulo."}
+            No tienes permisos para acceder a este módulo.
           </div>
         </div>
       );
@@ -268,9 +226,9 @@ export default function App() {
       case "historial":
         return <HistorialPacientes esAdmin={esAdmin} />;
       case "ingresos":
-        return <Ingresos esAdmin={esAdmin} />;
+        return <Ingresos />;
       case "egresos":
-        return <Egresos esAdmin={esAdmin} />;
+        return <Egresos />;
       case "flujo":
         return <FlujoNeto />;
       case "usuarios":
@@ -306,15 +264,6 @@ export default function App() {
           </main>
         </div>
       </div>
-    );
-  }
-
-  if (empresaVencida) {
-    return (
-      <BloqueoDemo
-        empresaNombre={empresa?.nombre}
-        fechaVencimiento={empresa?.fecha_vencimiento}
-      />
     );
   }
 
@@ -379,9 +328,6 @@ export default function App() {
               <div className="app-page-title">{tituloVista}</div>
               <div className="app-page-subtitle">
                 {perfil?.nombre || "Usuario"} · {perfil?.rol || "usuario"}
-                {esDemoEmpresa ? " · Empresa Demo" : ""}
-                {esBasicaEmpresa ? " · Plan Básico" : ""}
-                {esPremiumEmpresa ? " · Plan Premium" : ""}
               </div>
             </div>
           </div>
