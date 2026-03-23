@@ -1169,3 +1169,30 @@ table {
     min-width: 580px;
   }
 }
+
+.empresa-banner {
+  background: #f7f0f7;
+  border: 1px solid #eadcea;
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.empresa-nombre {
+  font-weight: 600;
+  color: #6d5c6d;
+}
+
+.empresa-info {
+  font-size: 13px;
+  color: #8b7a8b;
+}
+
+.empresa-dias {
+  font-size: 13px;
+  font-weight: 600;
+}

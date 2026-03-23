@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../api/supabase';
 import { getEmpresaId } from '../config/empresa';
+import { obtenerEmpresaUsuario, calcularDiasRestantes } from '../utils/empresa';
 
 type Paciente = {
   id: string;
@@ -36,87 +37,120 @@ type Egreso = {
   monto: number | null;
 };
 
+type Empresa = {
+  id: string;
+  nombre: string | null;
+  plan: string | null;
+  activa: boolean | null;
+  fecha_inicio: string | null;
+  fecha_vencimiento: string | null;
+  demo_dias: number | null;
+};
+
 const Dashboard: React.FC = () => {
   const empresaId = getEmpresaId();
 
   const hoy = new Date();
   const anio = hoy.getFullYear();
   const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+
   const inicioMes = `${anio}-${mes}-01`;
-  const finMes = `${anio}-${mes}-31`;
+  const finMesDate = new Date(anio, Number(mes), 0);
+  const finMes = finMesDate.toISOString().split('T')[0];
 
   const [loading, setLoading] = useState(false);
+  const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [sesionesMes, setSesionesMes] = useState<Sesion[]>([]);
   const [todasSesiones, setTodasSesiones] = useState<Sesion[]>([]);
   const [otrosIngresos, setOtrosIngresos] = useState<OtroIngreso[]>([]);
   const [egresos, setEgresos] = useState<Egreso[]>([]);
 
+  const formatearFecha = (fecha?: string | null) => {
+    if (!fecha) return '—';
+    const d = new Date(fecha);
+    return d.toLocaleDateString('es-BO');
+  };
+
+  const cargarEmpresa = async () => {
+    const data = await obtenerEmpresaUsuario();
+    setEmpresa((data || null) as Empresa | null);
+  };
+
   const cargarDatos = async () => {
     setLoading(true);
 
-    const { data: dataPacientes, error: errorPacientes } = await supabase
-      .from('pacientes')
-      .select('id, nombre, fecha_nacimiento, created_at')
-      .eq('empresa_id', empresaId)
-      .order('created_at', { ascending: false });
+    const [
+      pacientesRes,
+      sesionesMesRes,
+      todasSesionesRes,
+      otrosRes,
+      egresosRes,
+    ] = await Promise.all([
+      supabase
+        .from('pacientes')
+        .select('id, nombre, fecha_nacimiento, created_at')
+        .eq('empresa_id', empresaId)
+        .order('created_at', { ascending: false }),
 
-    const { data: dataSesionesMes, error: errorSesionesMes } = await supabase
-      .from('sesiones')
-      .select('id, paciente_id, nombre, fecha, monto')
-      .eq('empresa_id', empresaId)
-      .gte('fecha', inicioMes)
-      .lte('fecha', finMes)
-      .order('fecha', { ascending: false });
+      supabase
+        .from('sesiones')
+        .select('id, paciente_id, nombre, fecha, monto')
+        .eq('empresa_id', empresaId)
+        .gte('fecha', inicioMes)
+        .lte('fecha', finMes)
+        .order('fecha', { ascending: false }),
 
-    const { data: dataTodasSesiones, error: errorTodasSesiones } = await supabase
-      .from('sesiones')
-      .select('id, paciente_id, nombre, fecha, monto')
-      .eq('empresa_id', empresaId)
-      .order('fecha', { ascending: false });
+      supabase
+        .from('sesiones')
+        .select('id, paciente_id, nombre, fecha, monto')
+        .eq('empresa_id', empresaId)
+        .order('fecha', { ascending: false }),
 
-    const { data: dataOtros, error: errorOtros } = await supabase
-      .from('otros_ingresos')
-      .select('id, fecha, monto')
-      .eq('empresa_id', empresaId)
-      .gte('fecha', inicioMes)
-      .lte('fecha', finMes);
+      supabase
+        .from('otros_ingresos')
+        .select('id, fecha, monto')
+        .eq('empresa_id', empresaId)
+        .gte('fecha', inicioMes)
+        .lte('fecha', finMes),
 
-    const { data: dataEgresos, error: errorEgresos } = await supabase
-      .from('egresos')
-      .select('id, fecha, monto')
-      .eq('empresa_id', empresaId)
-      .gte('fecha', inicioMes)
-      .lte('fecha', finMes);
+      supabase
+        .from('egresos')
+        .select('id, fecha, monto')
+        .eq('empresa_id', empresaId)
+        .gte('fecha', inicioMes)
+        .lte('fecha', finMes),
+    ]);
 
     setLoading(false);
 
     if (
-      errorPacientes ||
-      errorSesionesMes ||
-      errorTodasSesiones ||
-      errorOtros ||
-      errorEgresos
+      pacientesRes.error ||
+      sesionesMesRes.error ||
+      todasSesionesRes.error ||
+      otrosRes.error ||
+      egresosRes.error
     ) {
       alert(
-        errorPacientes?.message ||
-          errorSesionesMes?.message ||
-          errorTodasSesiones?.message ||
-          errorOtros?.message ||
-          errorEgresos?.message ||
+        pacientesRes.error?.message ||
+          sesionesMesRes.error?.message ||
+          todasSesionesRes.error?.message ||
+          otrosRes.error?.message ||
+          egresosRes.error?.message ||
           'Error cargando dashboard'
       );
       return;
     }
 
-    setPacientes((dataPacientes || []) as Paciente[]);
-    setSesionesMes((dataSesionesMes || []) as Sesion[]);
-    setTodasSesiones((dataTodasSesiones || []) as Sesion[]);
-    setOtrosIngresos((dataOtros || []) as OtroIngreso[]);
-    setEgresos((dataEgresos || []) as Egreso[]);
+    setPacientes((pacientesRes.data || []) as Paciente[]);
+    setSesionesMes((sesionesMesRes.data || []) as Sesion[]);
+    setTodasSesiones((todasSesionesRes.data || []) as Sesion[]);
+    setOtrosIngresos((otrosRes.data || []) as OtroIngreso[]);
+    setEgresos((egresosRes.data || []) as Egreso[]);
   };
 
   useEffect(() => {
+    cargarEmpresa();
     cargarDatos();
   }, []);
 
@@ -256,11 +290,60 @@ const Dashboard: React.FC = () => {
     return count;
   }, [sesionesMes, otrosIngresos, anio, mes]);
 
+  const diasRestantes = calcularDiasRestantes(empresa?.fecha_vencimiento || null);
+
+  const fechaInicioEmpresa = empresa?.fecha_inicio ? new Date(empresa.fecha_inicio) : null;
+  const hoyBase = new Date();
+  hoyBase.setHours(0, 0, 0, 0);
+
+  const demoAunNoInicia =
+    fechaInicioEmpresa
+      ? new Date(
+          fechaInicioEmpresa.getFullYear(),
+          fechaInicioEmpresa.getMonth(),
+          fechaInicioEmpresa.getDate()
+        ).getTime() > hoyBase.getTime()
+      : false;
+
   return (
     <div className="ficha-container">
       <div className="ficha-header">
         <div className="ficha-title">DASHBOARD PRINCIPAL</div>
       </div>
+
+      {empresa && (
+        <div className="empresa-banner">
+          <div className="empresa-nombre">🏢 {empresa.nombre || 'Empresa'}</div>
+
+          <div className="empresa-info">
+            📦 Plan: {empresa.plan || 'Sin plan'}
+          </div>
+
+          <div className="empresa-info">
+            🚀 Inicio: {formatearFecha(empresa.fecha_inicio)}
+          </div>
+
+          <div
+            className="empresa-dias"
+            style={{
+              color:
+                diasRestantes !== null && diasRestantes <= 3
+                  ? '#b55f6a'
+                  : '#6d5c6d',
+            }}
+          >
+            {demoAunNoInicia
+              ? `⏳ Inicia el ${formatearFecha(empresa.fecha_inicio)}`
+              : diasRestantes !== null
+              ? diasRestantes > 0
+                ? `⏳ ${diasRestantes} día(s) restantes · vence ${formatearFecha(
+                    empresa.fecha_vencimiento
+                  )}`
+                : `⛔ Demo vencido · venció ${formatearFecha(empresa.fecha_vencimiento)}`
+              : '⏳ Sin vencimiento'}
+          </div>
+        </div>
+      )}
 
       <div className="ingresos-resumen">
         <div className="ingreso-card">
