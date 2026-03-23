@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { supabase } from '../api/supabase';
+import { getEmpresaId } from '../config/empresa';
 
 type Paciente = {
   id: string;
@@ -129,6 +130,8 @@ const splitCsv = (value: string | null): string[] =>
 const joinCsv = (values: string[]): string => values.join(', ');
 
 const HistorialPacientes: React.FC = () => {
+  const empresaId = getEmpresaId();
+
   const [busqueda, setBusqueda] = useState('');
   const [loading, setLoading] = useState(false);
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
@@ -212,6 +215,7 @@ const HistorialPacientes: React.FC = () => {
     const query = supabase
       .from('pacientes')
       .select('*')
+      .eq('empresa_id', empresaId)
       .order('created_at', { ascending: false });
 
     const { data, error } =
@@ -309,7 +313,8 @@ const HistorialPacientes: React.FC = () => {
         motivo_consulta: form.motivo_consulta,
         tratamiento_primario: form.tratamiento_primario,
       })
-      .eq('id', form.id);
+      .eq('id', form.id)
+      .eq('empresa_id', empresaId);
 
     setLoading(false);
 
@@ -339,7 +344,11 @@ const HistorialPacientes: React.FC = () => {
         cerrarConfirmacion();
         setLoading(true);
 
-        const { error } = await supabase.from('pacientes').delete().eq('id', id);
+        const { error } = await supabase
+          .from('pacientes')
+          .delete()
+          .eq('id', id)
+          .eq('empresa_id', empresaId);
 
         setLoading(false);
 
@@ -360,6 +369,7 @@ const HistorialPacientes: React.FC = () => {
     const { data, error } = await supabase
       .from('sesiones')
       .select('id, paciente_id, fecha, descripcion, observaciones, monto')
+      .eq('empresa_id', empresaId)
       .eq('paciente_id', p.id)
       .order('fecha', { ascending: false });
 
@@ -431,7 +441,8 @@ const HistorialPacientes: React.FC = () => {
         observaciones: sesionForm.observaciones,
         monto: sesionForm.monto ? Number(sesionForm.monto) : null,
       })
-      .eq('id', sesionForm.id);
+      .eq('id', sesionForm.id)
+      .eq('empresa_id', empresaId);
 
     setLoading(false);
 
@@ -444,6 +455,7 @@ const HistorialPacientes: React.FC = () => {
       const { data } = await supabase
         .from('sesiones')
         .select('id, paciente_id, fecha, descripcion, observaciones, monto')
+        .eq('empresa_id', empresaId)
         .eq('paciente_id', sesionForm.paciente_id)
         .order('fecha', { ascending: false });
 
@@ -462,7 +474,11 @@ const HistorialPacientes: React.FC = () => {
         cerrarConfirmacion();
         setLoading(true);
 
-        const { error } = await supabase.from('sesiones').delete().eq('id', sesionId);
+        const { error } = await supabase
+          .from('sesiones')
+          .delete()
+          .eq('id', sesionId)
+          .eq('empresa_id', empresaId);
 
         setLoading(false);
 
@@ -474,6 +490,7 @@ const HistorialPacientes: React.FC = () => {
         const { data } = await supabase
           .from('sesiones')
           .select('id, paciente_id, fecha, descripcion, observaciones, monto')
+          .eq('empresa_id', empresaId)
           .eq('paciente_id', pacienteId)
           .order('fecha', { ascending: false });
 
@@ -487,6 +504,7 @@ const HistorialPacientes: React.FC = () => {
     const { data: sesionesData, error: sesionesError } = await supabase
       .from('sesiones')
       .select('id, paciente_id, fecha, descripcion, observaciones, monto')
+      .eq('empresa_id', empresaId)
       .eq('paciente_id', p.id)
       .order('fecha', { ascending: false });
 

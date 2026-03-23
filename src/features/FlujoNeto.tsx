@@ -7,6 +7,7 @@ import {
   FileDown,
 } from 'lucide-react';
 import { supabase } from '../api/supabase';
+import { getEmpresaId } from '../config/empresa';
 import { exportarExcel, exportarPdfTabla } from '../utils/exportUtils';
 
 type SesionIngreso = {
@@ -28,6 +29,8 @@ type Egreso = {
 };
 
 const FlujoNeto: React.FC = () => {
+  const empresaId = getEmpresaId();
+
   const hoy = new Date();
   const mesActual = String(hoy.getMonth() + 1).padStart(2, '0');
   const anioActual = String(hoy.getFullYear());
@@ -42,7 +45,8 @@ const FlujoNeto: React.FC = () => {
   const [anioFiltro, setAnioFiltro] = useState(anioActual);
 
   const inicioMes = `${anioFiltro}-${mesFiltro}-01`;
-  const finMes = `${anioFiltro}-${mesFiltro}-31`;
+  const finMesDate = new Date(Number(anioFiltro), Number(mesFiltro), 0);
+  const finMes = finMesDate.toISOString().split('T')[0];
 
   useEffect(() => {
     if (!toast) return;
@@ -53,41 +57,46 @@ const FlujoNeto: React.FC = () => {
   const cargarDatos = async () => {
     setLoading(true);
 
-    const { data: dataSesiones, error: errorSesiones } = await supabase
-      .from('sesiones')
-      .select('id, fecha, monto')
-      .gte('fecha', inicioMes)
-      .lte('fecha', finMes);
+    const [sesionesRes, otrosRes, egresosRes] = await Promise.all([
+      supabase
+        .from('sesiones')
+        .select('id, fecha, monto')
+        .eq('empresa_id', empresaId)
+        .gte('fecha', inicioMes)
+        .lte('fecha', finMes),
 
-    const { data: dataOtros, error: errorOtros } = await supabase
-      .from('otros_ingresos')
-      .select('id, fecha, monto')
-      .gte('fecha', inicioMes)
-      .lte('fecha', finMes);
+      supabase
+        .from('otros_ingresos')
+        .select('id, fecha, monto')
+        .eq('empresa_id', empresaId)
+        .gte('fecha', inicioMes)
+        .lte('fecha', finMes),
 
-    const { data: dataEgresos, error: errorEgresos } = await supabase
-      .from('egresos')
-      .select('id, fecha, monto')
-      .gte('fecha', inicioMes)
-      .lte('fecha', finMes);
+      supabase
+        .from('egresos')
+        .select('id, fecha, monto')
+        .eq('empresa_id', empresaId)
+        .gte('fecha', inicioMes)
+        .lte('fecha', finMes),
+    ]);
 
     setLoading(false);
 
-    if (errorSesiones || errorOtros || errorEgresos) {
+    if (sesionesRes.error || otrosRes.error || egresosRes.error) {
       setToast({
         type: 'error',
         text:
-          errorSesiones?.message ||
-          errorOtros?.message ||
-          errorEgresos?.message ||
+          sesionesRes.error?.message ||
+          otrosRes.error?.message ||
+          egresosRes.error?.message ||
           'Error cargando datos',
       });
       return;
     }
 
-    setSesiones((dataSesiones || []) as SesionIngreso[]);
-    setOtrosIngresos((dataOtros || []) as OtroIngreso[]);
-    setEgresos((dataEgresos || []) as Egreso[]);
+    setSesiones((sesionesRes.data || []) as SesionIngreso[]);
+    setOtrosIngresos((otrosRes.data || []) as OtroIngreso[]);
+    setEgresos((egresosRes.data || []) as Egreso[]);
   };
 
   useEffect(() => {
@@ -112,6 +121,7 @@ const FlujoNeto: React.FC = () => {
   );
 
   const flujoNeto = totalIngresos - totalEgresos;
+  const esGanancia = flujoNeto >= 0;
 
   const exportarFlujoExcel = () => {
     const rows = [
@@ -145,7 +155,7 @@ const FlujoNeto: React.FC = () => {
       filas,
       resumen: [
         `Mes: ${mesFiltro}/${anioFiltro}`,
-        `Resumen financiero del periodo seleccionado`,
+        'Resumen financiero del periodo seleccionado',
       ],
     });
   };
@@ -246,7 +256,7 @@ const FlujoNeto: React.FC = () => {
           </div>
           <div
             className="ingreso-card-value"
-            style={{ color: flujoNeto >= 0 ? '#6d5c6d' : '#b55f6a' }}
+            style={{ color: esGanancia ? '#6d5c6d' : '#b55f6a' }}
           >
             Bs. {flujoNeto.toFixed(2)}
           </div>

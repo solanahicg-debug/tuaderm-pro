@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Save, Loader2 } from 'lucide-react';
 import { supabase } from '../api/supabase';
+import { getEmpresaId } from '../config/empresa';
 
 const FichaPaciente: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -85,11 +86,12 @@ const FichaPaciente: React.FC = () => {
   };
 
   const savePaciente = async () => {
-    if (!form.nombre) return alert('Nombre requerido');
+    if (!form.nombre.trim()) return alert('Nombre requerido');
 
     setLoading(true);
 
     const { error } = await supabase.from('pacientes').insert([{
+      empresa_id: getEmpresaId(),
       nombre: form.nombre,
       sexo: form.sexo,
       fecha_nacimiento: form.fecha_nacimiento,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard,
   UserRound,
@@ -9,6 +9,7 @@ import {
   ChartNoAxesCombined,
   Menu,
   X,
+  LogOut,
 } from "lucide-react";
 
 import FichaPaciente from "./features/FichaPaciente";
@@ -18,6 +19,12 @@ import Ingresos from "./features/Ingresos";
 import Egresos from "./features/Egresos";
 import FlujoNeto from "./features/FlujoNeto";
 import Dashboard from "./features/Dashboard";
+import Login from "./features/Login";
+
+import { obtenerUsuarioActual, cerrarSesionAuth } from "./utils/auth";
+import { obtenerPerfilUsuario } from "./utils/perfil";
+import { setEmpresaId } from "./config/empresa";
+import { supabase } from "./api/supabase";
 
 export type VistaApp =
   | "dashboard"
@@ -48,6 +55,63 @@ export default function App() {
   const [vista, setVista] = useState<VistaApp>("dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const [cargandoSesion, setCargandoSesion] = useState(true);
+  const [logueado, setLogueado] = useState(false);
+  const [perfil, setPerfil] = useState<any>(null);
+
+  const empresaNombre = "TUADERM";
+  const empresaSubtitulo = "Sistema Clínico";
+
+  const tituloVista = useMemo(() => {
+    return navItems.find((item) => item.key === vista)?.label || "Dashboard";
+  }, [vista]);
+
+  const cargarSesion = async () => {
+    try {
+      const user = await obtenerUsuarioActual();
+
+      if (!user) {
+        setLogueado(false);
+        setPerfil(null);
+        setCargandoSesion(false);
+        return;
+      }
+
+      const perfilUsuario = await obtenerPerfilUsuario(user.id);
+
+      setEmpresaId(perfilUsuario.empresa_id);
+      setPerfil(perfilUsuario);
+      setLogueado(true);
+    } catch (error) {
+      console.error("Error cargando sesión:", error);
+      setLogueado(false);
+      setPerfil(null);
+    } finally {
+      setCargandoSesion(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarSesion();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      cargarSesion();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const cerrarSesion = async () => {
+    await cerrarSesionAuth();
+    setLogueado(false);
+    setPerfil(null);
+    setMenuOpen(false);
+  };
+
   const renderVista = () => {
     switch (vista) {
       case "dashboard":
@@ -69,14 +133,38 @@ export default function App() {
     }
   };
 
+  if (cargandoSesion) {
+    return (
+      <div className="app-shell" style={{ background: "var(--background)" }}>
+        <div className="ficha-container" style={{ maxWidth: 420, marginTop: 60 }}>
+          <div className="ficha-header">
+            <div className="ficha-title">Cargando sesión...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!logueado) {
+    return (
+      <div className="app-shell" style={{ background: "var(--background)" }}>
+        <div className="app-main">
+          <main className="app-content">
+            <Login onLoginSuccess={cargarSesion} />
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell" style={{ background: "var(--background)" }}>
       <aside className={`app-sidebar ${menuOpen ? "open" : ""}`}>
         <div className="app-brand">
           <div className="app-brand-badge">T</div>
           <div className="app-brand-texts">
-            <div className="app-brand-title">TUADERM</div>
-            <div className="app-brand-subtitle">Sistema Clínico</div>
+            <div className="app-brand-title">{empresaNombre}</div>
+            <div className="app-brand-subtitle">{empresaSubtitulo}</div>
           </div>
         </div>
 
@@ -100,6 +188,15 @@ export default function App() {
               </button>
             );
           })}
+
+          <button
+            type="button"
+            className="app-nav-item"
+            onClick={cerrarSesion}
+          >
+            <LogOut size={18} />
+            <span>Cerrar sesión</span>
+          </button>
         </nav>
       </aside>
 
@@ -118,10 +215,10 @@ export default function App() {
             </button>
 
             <div className="app-topbar-texts">
-              <div className="app-page-title">
-                {navItems.find((item) => item.key === vista)?.label}
+              <div className="app-page-title">{tituloVista}</div>
+              <div className="app-page-subtitle">
+                {perfil?.nombre || "Usuario"} · {perfil?.rol || "usuario"}
               </div>
-              <div className="app-page-subtitle">Centro estético · gestión diaria</div>
             </div>
           </div>
         </header>
@@ -130,4 +227,16 @@ export default function App() {
       </div>
     </div>
   );
+
+if (true) {
+  return (
+    <div className="app-shell" style={{ background: "var(--background)" }}>
+      <div className="app-main">
+        <main className="app-content">
+          <Login onLoginSuccess={() => {}} />
+        </main>
+      </div>
+    </div>
+  );
+}
 }

@@ -7,6 +7,7 @@ import {
   ChartNoAxesCombined,
 } from 'lucide-react';
 import { supabase } from '../api/supabase';
+import { getEmpresaId } from '../config/empresa';
 
 type Paciente = {
   id: string;
@@ -36,6 +37,8 @@ type Egreso = {
 };
 
 const Dashboard: React.FC = () => {
+  const empresaId = getEmpresaId();
+
   const hoy = new Date();
   const anio = hoy.getFullYear();
   const mes = String(hoy.getMonth() + 1).padStart(2, '0');
@@ -55,11 +58,13 @@ const Dashboard: React.FC = () => {
     const { data: dataPacientes, error: errorPacientes } = await supabase
       .from('pacientes')
       .select('id, nombre, fecha_nacimiento, created_at')
+      .eq('empresa_id', empresaId)
       .order('created_at', { ascending: false });
 
     const { data: dataSesionesMes, error: errorSesionesMes } = await supabase
       .from('sesiones')
       .select('id, paciente_id, nombre, fecha, monto')
+      .eq('empresa_id', empresaId)
       .gte('fecha', inicioMes)
       .lte('fecha', finMes)
       .order('fecha', { ascending: false });
@@ -67,17 +72,20 @@ const Dashboard: React.FC = () => {
     const { data: dataTodasSesiones, error: errorTodasSesiones } = await supabase
       .from('sesiones')
       .select('id, paciente_id, nombre, fecha, monto')
+      .eq('empresa_id', empresaId)
       .order('fecha', { ascending: false });
 
     const { data: dataOtros, error: errorOtros } = await supabase
       .from('otros_ingresos')
       .select('id, fecha, monto')
+      .eq('empresa_id', empresaId)
       .gte('fecha', inicioMes)
       .lte('fecha', finMes);
 
     const { data: dataEgresos, error: errorEgresos } = await supabase
       .from('egresos')
       .select('id, fecha, monto')
+      .eq('empresa_id', empresaId)
       .gte('fecha', inicioMes)
       .lte('fecha', finMes);
 
@@ -411,7 +419,9 @@ const Dashboard: React.FC = () => {
         ) : (
           <div className="mini-card">
             <div className="mini-card-title">Sin alertas</div>
-            <div className="mini-card-sub">No hay sesiones con monto menor o igual a Bs. 100 este mes.</div>
+            <div className="mini-card-sub">
+              No hay sesiones con monto menor o igual a Bs. 100 este mes.
+            </div>
           </div>
         )}
       </div>

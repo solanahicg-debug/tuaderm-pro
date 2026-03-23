@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../api/supabase';
 import { Save, Loader2 } from 'lucide-react';
+import { getEmpresaId } from '../config/empresa';
 
 type SesionAnterior = {
   id: string;
@@ -55,6 +56,7 @@ const FichaSesion: React.FC = () => {
       const { data } = await supabase
         .from('pacientes')
         .select('*')
+        .eq('empresa_id', getEmpresaId())
         .ilike('nombre', `%${busqueda}%`);
 
       if (data) setResultados(data);
@@ -67,6 +69,7 @@ const FichaSesion: React.FC = () => {
     const { data } = await supabase
       .from('sesiones')
       .select('id, fecha, descripcion, observaciones, monto')
+      .eq('empresa_id', getEmpresaId())
       .eq('paciente_id', pacienteId)
       .order('fecha', { ascending: false })
       .limit(5);
@@ -138,6 +141,7 @@ const FichaSesion: React.FC = () => {
 
     const { error } = await supabase.from('sesiones').insert([
       {
+        empresa_id: getEmpresaId(),
         fecha: form.fecha || null,
         paciente_id: form.paciente_id,
         nombre: form.nombre,

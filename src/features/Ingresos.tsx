@@ -9,6 +9,7 @@ import {
   FileDown,
 } from 'lucide-react';
 import { supabase } from '../api/supabase';
+import { getEmpresaId } from '../config/empresa';
 import {
   exportarExcel,
   exportarPdfTabla,
@@ -31,6 +32,8 @@ type SesionIngreso = {
 };
 
 const Ingresos: React.FC = () => {
+  const empresaId = getEmpresaId();
+
   const hoy = new Date();
   const mesActual = String(hoy.getMonth() + 1).padStart(2, '0');
   const anioActual = String(hoy.getFullYear());
@@ -68,6 +71,7 @@ const Ingresos: React.FC = () => {
     const { data: dataSesiones, error: errorSesiones } = await supabase
       .from('sesiones')
       .select('id, fecha, monto')
+      .eq('empresa_id', empresaId)
       .gte('fecha', inicioMes)
       .lte('fecha', finMes)
       .order('fecha', { ascending: false });
@@ -75,6 +79,7 @@ const Ingresos: React.FC = () => {
     const { data: dataOtros, error: errorOtros } = await supabase
       .from('otros_ingresos')
       .select('*')
+      .eq('empresa_id', empresaId)
       .gte('fecha', inicioMes)
       .lte('fecha', finMes)
       .order('fecha', { ascending: false });
@@ -129,12 +134,14 @@ const Ingresos: React.FC = () => {
           descripcion: form.descripcion,
           monto: Number(form.monto),
         })
-        .eq('id', ingresoIdEditando);
+        .eq('id', ingresoIdEditando)
+        .eq('empresa_id', empresaId);
 
       error = res.error;
     } else {
       const res = await supabase.from('otros_ingresos').insert([
         {
+          empresa_id: empresaId,
           fecha: form.fecha,
           concepto: form.concepto,
           descripcion: form.descripcion,
@@ -181,7 +188,11 @@ const Ingresos: React.FC = () => {
 
     setLoading(true);
 
-    const { error } = await supabase.from('otros_ingresos').delete().eq('id', id);
+    const { error } = await supabase
+      .from('otros_ingresos')
+      .delete()
+      .eq('id', id)
+      .eq('empresa_id', empresaId);
 
     setLoading(false);
 
