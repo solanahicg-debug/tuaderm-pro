@@ -19,5 +19,6 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "supabase"]
+  "include": ["src"],
+  "exclude": ["supabase_backup", "supabase_backup", "node_modules"]
 }
