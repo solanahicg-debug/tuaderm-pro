@@ -1,0 +1,9 @@
+[33mcommit a69af26711406e134e6c051635d8bfa8562306c2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Sol Anahi <solanahi.cg@gmail.com>
+Date:   Wed Mar 25 11:06:00 2026 -0400
+
+    Remove local supabase function from frontend build
+
+ src/utils/usuarios.ts | 25 [32m+++++[m[31m--------------------[m
+ tsconfig.app.json     |  2 [32m+[m[31m-[m
+ 2 files changed, 6 insertions(+), 21 deletions(-)
