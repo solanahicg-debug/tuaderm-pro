@@ -1,6 +1,5 @@
-import { FunctionsHttpError } from '@supabase/supabase-js'
-import { supabase } from '../api/supabase'
 import type { RolApp, PerfilUsuario } from './perfil'
+import { supabase } from '../api/supabase'
 
 export type CrearUsuarioPayload = {
   email: string
@@ -11,42 +10,58 @@ export type CrearUsuarioPayload = {
 }
 
 export const crearUsuarioConPerfil = async (payload: CrearUsuarioPayload) => {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession()
+
+  if (sessionError) {
+    throw new Error(sessionError.message)
+  }
+
+  if (!session?.access_token) {
+    throw new Error('No se encontró una sesión activa')
+  }
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Faltan variables de entorno de Supabase')
+  }
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const raw = await response.text()
+  console.log('RAW create-user response:', raw)
+
+  let parsed: any = null
   try {
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession()
+    parsed = raw ? JSON.parse(raw) : null
+  } catch {
+    parsed = null
+  }
 
-    if (sessionError) throw new Error(sessionError.message)
-    if (!session?.access_token) throw new Error('No se encontró una sesión activa')
+  if (!response.ok) {
+    throw new Error(parsed?.error || raw || `Error HTTP ${response.status}`)
+  }
 
-    const { data, error } = await supabase.functions.invoke('create-user', {
-      body: payload,
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    })
+  if (parsed?.error) {
+    throw new Error(parsed.error)
+  }
 
-    if (error) throw error
-    if (data?.error) throw new Error(data.error)
-
-    return data as {
-      ok: true
-      user_id: string
-      perfil: PerfilUsuario
-    }
-  } catch (error: unknown) {
-    if (error instanceof FunctionsHttpError) {
-      try {
-        const raw = await error.context.text()
-        const parsed = JSON.parse(raw)
-        throw new Error(parsed?.error || raw || 'Error en la Edge Function')
-      } catch {
-        throw new Error('La Edge Function devolvió un error sin detalle')
-      }
-    }
-
-    if (error instanceof Error) throw error
-    throw new Error('Error desconocido al crear usuario')
+  return parsed as {
+    ok: true
+    user_id: string
+    perfil?: PerfilUsuario
+    message?: string
   }
 }
