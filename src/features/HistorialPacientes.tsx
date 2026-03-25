@@ -341,31 +341,63 @@ const HistorialPacientes: React.FC<Props> = ({ esAdmin }) => {
   };
 
   const eliminarPaciente = async (id: string, nombre?: string | null) => {
-    abrirConfirmacion(
-      'Eliminar paciente',
-      `¿Seguro que deseas eliminar a ${nombre || 'este paciente'}?`,
-      async () => {
-        cerrarConfirmacion();
-        setLoading(true);
+  abrirConfirmacion(
+    'Eliminar paciente',
+    `¿Seguro que deseas eliminar a ${nombre || 'este paciente'}?`,
+    async () => {
+      cerrarConfirmacion();
+      setLoading(true);
 
-        const { error } = await supabase
+      try {
+        const { data: sesionesRelacionadas, error: sesionesError } = await supabase
+          .from('sesiones')
+          .select('id')
+          .eq('empresa_id', empresaId)
+          .eq('paciente_id', id)
+          .limit(1);
+
+        if (sesionesError) {
+          throw sesionesError;
+        }
+
+        if (sesionesRelacionadas && sesionesRelacionadas.length > 0) {
+          setToast({
+            type: 'error',
+            text: 'No puedes eliminar este paciente porque tiene sesiones registradas. Elimina primero sus sesiones.',
+          });
+          return;
+        }
+
+        const { error: pacienteError } = await supabase
           .from('pacientes')
           .delete()
           .eq('id', id)
           .eq('empresa_id', empresaId);
 
-        setLoading(false);
+        if (pacienteError) {
+          throw pacienteError;
+        }
 
-        if (error) {
-          setToast({ type: 'error', text: error.message });
-          return;
+        if (pacienteDetalle?.id === id) {
+          setPacienteDetalle(null);
+          setVerFicha(false);
+          setVerSesiones(false);
         }
 
         setToast({ type: 'success', text: 'Paciente eliminado correctamente.' });
         cargarPacientes();
+      } catch (error: any) {
+        console.error('Error eliminando paciente:', error);
+        setToast({
+          type: 'error',
+          text: error?.message || 'No se pudo eliminar el paciente.',
+        });
+      } finally {
+        setLoading(false);
       }
-    );
-  };
+    }
+  );
+};
 
   const abrirSesionesPaciente = async (p: Paciente) => {
     setLoading(true);
