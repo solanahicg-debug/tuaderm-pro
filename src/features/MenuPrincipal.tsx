@@ -6,17 +6,11 @@ import {
   FolderOpenDot,
   BanknoteArrowUp,
   BanknoteArrowDown,
-  ChartNoAxesCombined,
-  Users,
+  ChartNoAxesCombined
 } from 'lucide-react';
 import type { VistaApp } from '../App';
 
-type Props = {
-  setVista: React.Dispatch<React.SetStateAction<VistaApp>>;
-  esAdmin: boolean;
-};
-
-const MenuPrincipal: React.FC<Props> = ({ setVista, esAdmin }) => {
+const MenuPrincipal: React.FC<{ setVista: React.Dispatch<React.SetStateAction<VistaApp>> }> = ({ setVista }) => {
   return (
     <div className="menu-container">
       <div className="menu-title">Panel Principal</div>
@@ -70,15 +64,6 @@ const MenuPrincipal: React.FC<Props> = ({ setVista, esAdmin }) => {
           </div>
           <div className="menu-text">Flujo Neto</div>
         </div>
-
-        {esAdmin && (
-          <div className="menu-card" onClick={() => setVista('usuarios')}>
-            <div className="menu-icon">
-              <Users size={38} />
-            </div>
-            <div className="menu-text">Usuarios</div>
-          </div>
-        )}
       </div>
     </div>
   );

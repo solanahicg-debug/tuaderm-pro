@@ -21,7 +21,6 @@ import Egresos from "./features/Egresos";
 import FlujoNeto from "./features/FlujoNeto";
 import Dashboard from "./features/Dashboard";
 import Login from "./features/Login";
-import UsuariosAdmin from "./features/UsuariosAdmin";
 
 import { obtenerUsuarioActual, cerrarSesionAuth } from "./utils/auth";
 import {
@@ -39,8 +38,7 @@ export type VistaApp =
   | "historial"
   | "ingresos"
   | "egresos"
-  | "flujo"
-  | "usuarios";
+  | "flujo";
 
 type NavItem = {
   key: VistaApp;
@@ -92,12 +90,7 @@ const navItems: NavItem[] = [
     icon: ChartNoAxesCombined,
     rolesPermitidos: ["admin"],
   },
-  {
-    key: "usuarios",
-    label: "Usuarios",
-    icon: Users,
-    rolesPermitidos: ["admin"],
-  },
+
 ];
 
 export default function App() {
@@ -231,13 +224,6 @@ export default function App() {
         return <Egresos />;
       case "flujo":
         return <FlujoNeto />;
-      case "usuarios":
-        return (
-          <UsuariosAdmin
-            empresaId={perfil?.empresa_id || ""}
-            esAdmin={esAdmin}
-          />
-        );
       default:
         return <Dashboard />;
     }
