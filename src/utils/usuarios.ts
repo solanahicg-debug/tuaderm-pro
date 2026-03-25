@@ -26,10 +26,6 @@ export const crearUsuarioConPerfil = async (payload: CrearUsuarioPayload) => {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_KEY
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Faltan variables de entorno de Supabase')
-  }
-
   const response = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
     method: 'POST',
     headers: {
@@ -41,7 +37,6 @@ export const crearUsuarioConPerfil = async (payload: CrearUsuarioPayload) => {
   })
 
   const raw = await response.text()
-  console.log('RAW create-user response:', raw)
 
   let parsed: any = null
   try {
@@ -64,7 +59,4 @@ export const crearUsuarioConPerfil = async (payload: CrearUsuarioPayload) => {
     perfil?: PerfilUsuario
     message?: string
   }
-
-  console.log('USANDO FETCH CREATE-USER NUEVO')
-  
 }
