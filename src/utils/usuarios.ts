@@ -64,4 +64,7 @@ export const crearUsuarioConPerfil = async (payload: CrearUsuarioPayload) => {
     perfil?: PerfilUsuario
     message?: string
   }
+
+  console.log('USANDO FETCH CREATE-USER NUEVO')
+  
 }
