@@ -17,13 +17,8 @@ export const crearUsuarioConPerfil = async (payload: CrearUsuarioPayload) => {
       error: sessionError,
     } = await supabase.auth.getSession()
 
-    if (sessionError) {
-      throw new Error(sessionError.message)
-    }
-
-    if (!session?.access_token) {
-      throw new Error('No se encontró una sesión activa')
-    }
+    if (sessionError) throw new Error(sessionError.message)
+    if (!session?.access_token) throw new Error('No se encontró una sesión activa')
 
     const { data, error } = await supabase.functions.invoke('create-user', {
       body: payload,
@@ -41,27 +36,17 @@ export const crearUsuarioConPerfil = async (payload: CrearUsuarioPayload) => {
       perfil: PerfilUsuario
     }
   } catch (error: unknown) {
-    console.error('Error completo create-user:', error)
-
     if (error instanceof FunctionsHttpError) {
       try {
         const raw = await error.context.text()
-
-        try {
-          const parsed = JSON.parse(raw)
-          throw new Error(parsed?.error || raw || 'Error en la Edge Function')
-        } catch {
-          throw new Error(raw || 'Error en la Edge Function')
-        }
+        const parsed = JSON.parse(raw)
+        throw new Error(parsed?.error || raw || 'Error en la Edge Function')
       } catch {
         throw new Error('La Edge Function devolvió un error sin detalle')
       }
     }
 
-    if (error instanceof Error) {
-      throw error
-    }
-
+    if (error instanceof Error) throw error
     throw new Error('Error desconocido al crear usuario')
   }
 }
