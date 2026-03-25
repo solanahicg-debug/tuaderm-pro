@@ -111,7 +111,7 @@ export default function App() {
   const empresaNombre = "TUADERM";
   const empresaSubtitulo = "Sistema Clínico";
 
-  const rolActual: RolApp = (perfil?.rol as RolApp) || "usuario";
+  const rolActual = (perfil?.rol || "").toLowerCase().trim() as RolApp;
 
   const navPermitido = useMemo(() => {
     return navItems.filter((item) => item.rolesPermitidos.includes(rolActual));
