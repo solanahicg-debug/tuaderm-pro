@@ -12,17 +12,28 @@ export type CrearUsuarioPayload = {
 
 export const crearUsuarioConPerfil = async (payload: CrearUsuarioPayload) => {
   try {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
+
+    if (sessionError) {
+      throw new Error(sessionError.message)
+    }
+
+    if (!session?.access_token) {
+      throw new Error('No se encontró una sesión activa')
+    }
+
     const { data, error } = await supabase.functions.invoke('create-user', {
       body: payload,
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
     })
 
-    if (error) {
-      throw error
-    }
-
-    if (data?.error) {
-      throw new Error(data.error)
-    }
+    if (error) throw error
+    if (data?.error) throw new Error(data.error)
 
     return data as {
       ok: true
@@ -34,15 +45,16 @@ export const crearUsuarioConPerfil = async (payload: CrearUsuarioPayload) => {
 
     if (error instanceof FunctionsHttpError) {
       try {
-        const json = await error.context.json()
-        throw new Error(json?.error || 'Error en la Edge Function')
-      } catch {
+        const raw = await error.context.text()
+
         try {
-          const text = await error.context.text()
-          throw new Error(text || 'Error en la Edge Function')
+          const parsed = JSON.parse(raw)
+          throw new Error(parsed?.error || raw || 'Error en la Edge Function')
         } catch {
-          throw new Error('La Edge Function devolvió un error')
+          throw new Error(raw || 'Error en la Edge Function')
         }
+      } catch {
+        throw new Error('La Edge Function devolvió un error sin detalle')
       }
     }
 

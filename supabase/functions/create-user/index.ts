@@ -1,208 +1,120 @@
-// @ts-nocheck
-import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-type RolApp = 'admin' | 'recepcion' | 'doctor' | 'demo' | 'usuario'
+type RolApp = "admin" | "recepcion" | "doctor" | "usuario";
 
-type CreateUserPayload = {
-  email: string
-  password: string
-  nombre: string
-  rol: RolApp
-  empresa_id: string
-}
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
-
-serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
-
+Deno.serve(async (req) => {
   try {
-    if (req.method !== 'POST') {
-      return new Response(
-        JSON.stringify({ error: 'Método no permitido' }),
-        {
-          status: 405,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
+    const authHeader = req.headers.get("Authorization");
 
-    const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Falta Authorization' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+      return new Response(JSON.stringify({ error: "Falta Authorization" }), {
+        status: 401,
+      });
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabaseUser = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    );
 
-    const supabaseUserClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    })
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey)
-
+    // 🔹 Obtener usuario autenticado
     const {
-      data: { user: requester },
-      error: requesterError,
-    } = await supabaseUserClient.auth.getUser()
+      data: { user },
+      error: userError,
+    } = await supabaseUser.auth.getUser();
 
-    if (requesterError || !requester) {
-      return new Response(
-        JSON.stringify({ error: 'No autorizado' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Usuario no autenticado" }), {
+        status: 401,
+      });
     }
 
-    const { data: requesterPerfil, error: perfilError } = await supabaseAdmin
-      .from('perfiles')
-      .select('id, empresa_id, rol')
-      .eq('id', requester.id)
-      .maybeSingle()
+    // 🔹 Obtener perfil del usuario actual (con admin)
+    const { data: perfil, error: perfilError } = await supabaseAdmin
+      .from("perfiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
 
-    if (perfilError || !requesterPerfil) {
-      return new Response(
-        JSON.stringify({ error: 'No se encontró el perfil del usuario actual' }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+    if (perfilError || !perfil) {
+      return new Response(JSON.stringify({ error: "Perfil no encontrado" }), {
+        status: 400,
+      });
     }
 
-    if (requesterPerfil.rol !== 'admin') {
-      return new Response(
-        JSON.stringify({ error: 'Solo un admin puede crear usuarios' }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+    if (perfil.rol !== "admin") {
+      return new Response(JSON.stringify({ error: "No eres admin" }), {
+        status: 403,
+      });
     }
 
-    const body = (await req.json()) as Partial<CreateUserPayload>
+    // 🔹 Obtener datos del body
+    const body = await req.json();
+    const { email, password, nombre, rol, empresa_id } = body;
 
-    const email = body.email?.trim().toLowerCase()
-    const password = body.password?.trim()
-    const nombre = body.nombre?.trim()
-    const rol = body.rol?.trim() as RolApp | undefined
-    const empresa_id = body.empresa_id?.trim()
+    const rolesValidos: RolApp[] = ["admin", "recepcion", "doctor", "usuario"];
 
-    if (!email || !password || !nombre || !rol || !empresa_id) {
-      return new Response(
-        JSON.stringify({ error: 'Faltan datos obligatorios' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
-
-    if (empresa_id !== requesterPerfil.empresa_id) {
-      return new Response(
-        JSON.stringify({ error: 'No puedes crear usuarios para otra empresa' }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
-
-    const rolesValidos: RolApp[] = ['admin', 'recepcion', 'doctor', 'demo', 'usuario']
     if (!rolesValidos.includes(rol)) {
-      return new Response(
-        JSON.stringify({ error: 'Rol inválido' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+      return new Response(JSON.stringify({ error: "Rol inválido" }), {
+        status: 400,
+      });
     }
 
-    const { data: createdUser, error: createUserError } =
+    // 🔹 Crear usuario en auth
+    const { data: newUser, error: createError } =
       await supabaseAdmin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
-        user_metadata: {
-          nombre,
-          rol,
-          empresa_id,
-        },
-      })
+      });
 
-    if (createUserError || !createdUser.user) {
-      return new Response(
-        JSON.stringify({ error: createUserError?.message || 'No se pudo crear el usuario auth' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+    if (createError) {
+      return new Response(JSON.stringify({ error: createError.message }), {
+        status: 400,
+      });
     }
 
-    const { data: perfilCreado, error: perfilCreateError } = await supabaseAdmin
-      .from('perfiles')
-      .insert([
-        {
-          id: createdUser.user.id,
-          empresa_id,
-          nombre,
-          rol,
-        },
-      ])
-      .select()
-      .single()
+    // 🔹 Crear perfil
+    const { error: perfilCreateError } = await supabaseAdmin
+      .from("perfiles")
+      .insert({
+        id: newUser.user.id,
+        nombre,
+        rol,
+        empresa_id,
+      });
 
     if (perfilCreateError) {
-      await supabaseAdmin.auth.admin.deleteUser(createdUser.user.id)
-
       return new Response(
         JSON.stringify({ error: perfilCreateError.message }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+        { status: 400 }
+      );
     }
 
     return new Response(
       JSON.stringify({
         ok: true,
-        user_id: createdUser.user.id,
-        perfil: perfilCreado,
+        user_id: newUser.user.id,
       }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    )
+      { status: 200 }
+    );
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error inesperado'
     return new Response(
-      JSON.stringify({ error: message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    )
+      JSON.stringify({
+        error: error instanceof Error ? error.message : "Error desconocido",
+      }),
+      { status: 500 }
+    );
   }
-})
+});

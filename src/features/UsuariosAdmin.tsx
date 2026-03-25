@@ -16,7 +16,6 @@ const rolesDisponibles: RolApp[] = [
   'admin',
   'recepcion',
   'doctor',
-  'demo',
   'usuario',
 ];
 
